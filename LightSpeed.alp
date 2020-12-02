@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="LightSpeed" board="Alchitry Au" language="Lucid" version="3">
+  <files>
+    <component>pn_gen.luc</component>
+    <src>run_game_fraft.luc</src>
+    <component>edge_detector.luc</component>
+    <src>old_au_top.luc</src>
+    <src>comp16.luc</src>
+    <component>pipeline.luc</component>
+    <component>bin_to_dec.luc</component>
+    <src>memory.luc</src>
+    <src>multi_seven_seg.luc</src>
+    <component>counter.luc</component>
+    <src>bool16.luc</src>
+    <src>seven_seg.luc</src>
+    <src>control_logic.luc</src>
+    <src>alu.luc</src>
+    <component>decoder.luc</component>
+    <component>reset_conditioner.luc</component>
+    <src>add16.luc</src>
+    <component>button_conditioner.luc</component>
+    <src>shift16.luc</src>
+    <src>run_game.luc</src>
+    <src>auto_test.luc</src>
+    <src top="true">au_top.luc</src>
+    <constraint lib="true">alchitry.acf</constraint>
+    <constraint>br.acf</constraint>
+    <constraint lib="true">au.xdc</constraint>
+  </files>
+</project>

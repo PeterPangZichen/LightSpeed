@@ -1,0 +1,433 @@
+module control_logic (
+    input clk,  // clock
+    input rst,  // reset
+    input rd[16],  //read from alu
+    input startbutton,  //outside input from start button
+    input abutton[8],  //outside input from buttons of player A
+    input bbutton[8],  //outside input from buttons of player B
+    output ra[3],  //read position a
+    output rb[3],  //read position b
+    output we,  //write enable
+    output wa[3],  //write address
+    output wd[8],  //write data
+    output alufn[6],  //alufn for alu
+    output tm[5]  //time in binary
+  ) {
+  
+    .clk(clk), .rst(rst) {
+  
+      fsm game = {INITIALIZE, SETUPA, SETUPB, GAMERUN, COMPAREA, COMPAREB, HITA, HITB, CHANGEA, CHANGEB,
+     GAMEOVER, COMPARESCORESEQUAL, COMPARESCORESUNEQUAL, AWIN, BWIN, DRAWA, DRAWB, CLEANA, CLEANB, SETUPDEBUG, DEBUG};
+      pn_gen random;
+
+    
+    }
+
+    .clk(clk){
+  
+      counter timer (#SIZE(5), #DIV(25), #TOP(31), #UP(0));
+    
+    }
+  
+    decoder randomdecoder(#WIDTH(3));
+ 
+  always {
+    //initialize decoder
+    randomdecoder.in = 3b000;
+    
+    //initialize ramdom module
+    random.next = 1;
+    random.seed = 128h843233523a613966423b622562592c62;
+    
+    //initialize timer module
+    timer.rst = 0;
+    
+    case(game.q){
+    
+      game.INITIALIZE:
+      
+        ra = 3b000;
+        rb = 3b000;
+        we = 1b0;  //write disable
+        wa = 3b000;
+        wd = 8b00000000;
+        alufn = 6b000000;
+        
+        timer.rst = 1;
+        
+        if(startbutton==1){
+          
+          game.d = game.SETUPA;
+          
+        }else if(abutton==8b00000001){
+        
+          game.d = game.SETUPDEBUG;
+          
+        }else{
+        
+          game.d = game.INITIALIZE;
+          
+        }
+        
+      game.SETUPA:
+      
+        ra = 3b000;
+        rb = 3b000;
+        we = 1b1;  //write enable
+        wa = 3b000;  //write to a
+        wd = 8b00000001;  //initial value of a
+        alufn = 6b000000;
+        
+        timer.rst = 1;
+        
+        game.d = game.SETUPB;
+        
+      game.SETUPB:
+      
+        ra = 3b000;
+        rb = 3b000;
+        we = 1b1;  //write enable
+        wa = 3b001;  //write to b
+        wd = 8b00000001;  //initial value of b
+        alufn = 6b000000;
+        
+        timer.rst = 1;
+        
+        game.d = game.GAMERUN;
+        
+      game.GAMERUN:
+      
+        ra = 3b000;
+        rb = 3b000;
+        we = 1b0;  //write disable
+        wa = 3b000;
+        wd = 8b00000000;
+        alufn = 6b000000;
+        
+        timer.rst = 0; //run timer
+        
+        if (timer.value==1){
+          
+          game.d = game.GAMEOVER;
+          
+        }else if (abutton!=0){
+        
+          we = 1b1;  //write enable
+          wa = 3b100;
+          wd = abutton;
+
+          game.d = game.COMPAREA;
+        
+        }else if(bbutton!=0){
+        
+          we = 1b1;  //write enable
+          wa = 3b100;
+          wd = bbutton;
+        
+          game.d = game.COMPAREB;
+        
+        }else{
+        
+          game.d = game.GAMERUN;
+          
+        }
+        
+      game.COMPAREA:
+      
+        //compare whether the value temp/a is equal
+        ra = 3b000;  //read value of a
+        rb = 3b100;  //read value of temp
+        we = 1b0;  //write disable
+        wa = 3b000;  
+        wd = 8b00000000;
+        alufn = 6b110011;  //CMPEQ
+        
+        timer.rst = 0; //run timer
+        
+        if(rd==1){
+        
+          game.d = game.HITA;
+          
+        }else{
+        
+          game.d = game.GAMERUN;
+        }
+   
+      game.HITA:
+      
+        //score++
+        ra = 3b010;  //read scores a
+        rb = 3b101;  //read constant 1
+        we = 1b1;  //write enable
+        wa = 3b010;  //write to scores a
+        wd = rd[7:0];  //input from alu
+        alufn = 6b000000;  //ADD
+        
+        timer.rst = 0; //run timer
+        
+        game.d = game.CHANGEA;
+        
+        
+      game.CHANGEA:
+      
+        //change to a new led
+        ra = 3b000; 
+        rb = 3b000; 
+        we = 1b1;  //write enable
+        wa = 3b000;  //write to leds a
+        
+        random.next = 1;
+        randomdecoder.in = random.num[2:0];
+        
+        wd = randomdecoder.out;  //random num in one-hot
+        alufn = 6b000000; 
+        
+        timer.rst = 0; //run timer
+        
+        game.d = game.GAMERUN;
+        
+      game.COMPAREB:
+      
+        //compare whether the value temp/a is equal
+        ra = 3b001;  //read value of b
+        rb = 3b100;  //read value of temp
+        we = 1b0;  //write disable
+        wa = 3b000;  
+        wd = 8b00000000;
+        alufn = 6b110011;  //CMPEQ
+        
+        timer.rst = 0; //run timer
+        
+        if(rd==1){
+        
+          game.d = game.HITB;
+          
+        }else{
+        
+          game.d = game.GAMERUN;
+        }
+   
+      game.HITB:
+      
+        //score++
+        ra = 3b011;  //read scores b
+        rb = 3b101;  //read constant 1
+        we = 1b1;  //write enable
+        wa = 3b011;  //write to scores b
+        wd = rd[7:0];  //input from alu
+        alufn = 6b000000;  //ADD
+        
+        timer.rst = 0; //run timer
+        
+        game.d = game.CHANGEB;
+        
+        
+      game.CHANGEB:
+      
+        //change to a new led
+        ra = 3b000; 
+        rb = 3b000; 
+        we = 1b1;  //write enable
+        wa = 3b001;  //write to leds b
+        
+        random.next = 1;
+        randomdecoder.in = random.num[2:0];
+        
+        wd = randomdecoder.out;  //random num in one-hot
+        alufn = 6b000000; 
+        
+        timer.rst = 0; //run timer
+        
+        game.d = game.GAMERUN;  
+        
+      game.GAMEOVER:
+      
+        ra = 3b000;
+        rb = 3b000;
+        we = 1b0;
+        wa = 3b000;
+        wd = 8b00000000;
+        alufn = 6b000000;
+                
+        timer.rst = 1;
+        
+        game.d = game.COMPARESCORESEQUAL;
+        
+      game.COMPARESCORESEQUAL:
+      
+        //compare scores equality
+        ra = 3b010;  //read value of a scores
+        rb = 3b011;  //read value of b scores
+        we = 1b0;  //write disable
+        wa = 3b000;  
+        wd = 8b00000000;
+        alufn = 6b110011;  //CMPEQ
+        
+        timer.rst = 1;
+        
+        if(rd==1){
+        
+          game.d = game.DRAWA;
+          
+        }else{
+        
+          game.d = game.COMPARESCORESUNEQUAL;
+          
+        }
+        
+      game.COMPARESCORESUNEQUAL:
+      
+        //compare scores, find winner
+        ra = 3b010;  //read value of a scores
+        rb = 3b011;  //read value of b scores
+        we = 1b0;  //write disable
+        wa = 3b000;  
+        wd = 8b00000000;
+        alufn = 6b110101;  //CMPLT
+        
+        timer.rst = 1;
+        
+        if(rd==1){
+        
+          game.d = game.BWIN;
+          
+        }else{
+        
+          game.d = game.AWIN;
+          
+        }
+        
+      game.DRAWA:
+      
+        //light up all leds
+        ra = 3b000; 
+        rb = 3b000; 
+        we = 1b1;  //write enable
+        wa = 3b000;  //write to leds a
+        wd = 8b11111111;
+        alufn = 6b000000;
+        
+        game.d = game.DRAWB;
+        
+      game.DRAWB:
+      
+        //light up all leds
+        ra = 3b000; 
+        rb = 3b000; 
+        we = 1b1;  //write enable
+        wa = 3b001;  //write to leds b
+        wd = 8b11111111;
+        alufn = 6b000000;
+        
+        game.d = game.CLEANA;
+        
+      game.AWIN:
+      
+        //light all leds of a
+        ra = 3b000; 
+        rb = 3b000; 
+        we = 1b1;  //write enable
+        wa = 3b000;  //write to leds a
+        wd = 8b11111111;
+        alufn = 6b000000;
+        
+        game.d = game.CLEANA;
+        
+      game.BWIN:
+      
+        //light all leds of b
+        ra = 3b000; 
+        rb = 3b000; 
+        we = 1b1;  //write enable
+        wa = 3b001;  //write to leds b
+        wd = 8b11111111;
+        alufn = 6b000000;
+        
+        game.d = game.CLEANA;
+      
+      game.CLEANA:
+      
+        //clean a scores
+        ra = 3b000; 
+        rb = 3b000; 
+        we = 1b1;  //write enable
+        wa = 3b010;  //write to scores a
+        wd = 8b00000000;  //all 0
+        alufn = 6b000000;
+        
+        game.d = game.CLEANB;
+        
+      game.CLEANB:
+      
+        //clean a scores
+        ra = 3b000; 
+        rb = 3b000; 
+        we = 1b1;  //write enable
+        wa = 3b011;  //write to scores b
+        wd = 8b00000000;  //all 0
+        alufn = 6b000000;
+        
+        game.d = game.INITIALIZE;
+        
+      game.SETUPDEBUG:
+
+        ra = 3b000;
+        rb = 3b000;
+        we = 1b1;  //write
+        wa = 3b000;  //write to leds a
+        wd = 8b10101010;
+        alufn = 6b000000;
+                
+        timer.rst = 1;  
+        
+        game.d = game.DEBUG;
+      
+      game.DEBUG:
+      
+        ra = 3b000;
+        rb = 3b000;
+        we = 1b0;
+        wa = 3b000;
+        wd = 8b00000000;
+        alufn = 6b000000;
+        
+        timer.rst = 1;  
+        
+        //debug mode
+        //put anything for testing here
+        if (bbutton==8b10000000){
+        
+          game.d = game.GAMERUN;
+          
+        }else if (bbutton==8b01000000){
+        
+          game.d = game.HITA;
+          
+        }else if (bbutton==8b00100000){
+        
+          game.d = game.GAMEOVER;
+          
+        }else{
+        
+          game.d = game.DEBUG;
+          
+        }
+      
+  
+      default:
+      
+        ra = 3b000;
+        rb = 3b000;
+        we = 1b0;
+        wa = 3b000;
+        wd = 8b00000000;
+        alufn = 6b000000;
+                
+        timer.rst = 0;
+        
+        
+    }
+    
+    tm = timer.value;
+  }
+}

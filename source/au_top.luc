@@ -1,0 +1,54 @@
+module au_top (
+    input clk,              // 100MHz clock
+    input rst_n,            // reset button (active low)
+    output led [8],         // 8 user controllable LEDs
+    input usb_rx,           // USB->Serial input
+    output usb_tx,          // USB->Serial output
+    
+    input io_button[2][8],    //[0] red buttons, [1] green buttons
+    input io_start_button[1],  //startbutton io
+    output io_led[2][8],  //[0] red leds, [1] green leds
+    output io_seg_score[2][8],  //[0] red scores, [1] green scores
+    output io_sel_score[2][4],
+    output io_seg_time[2][8]  //[0] first num, [1] second num
+  ) {
+  
+  sig rst;                  // reset signal
+  
+  .clk(clk) {
+    // The reset conditioner is used to synchronize the reset signal to the FPGA
+    // clock. This ensures the entire FPGA comes out of reset at the same time.
+    reset_conditioner reset_cond;
+  }
+  
+  .clk(clk), .rst(rst) {
+  
+    run_game run;
+    
+  }
+  
+  always {
+    reset_cond.in = ~rst_n; // input raw inverted reset signal
+    rst = reset_cond.out;   // conditioned reset
+    
+    usb_tx = usb_rx;        // loop serial port
+    
+    led = 8h00;             // turn LEDs off
+    
+    io_led = 2x{{8h00}};    // turn LEDs off
+    io_seg_score = 2x{{8h11}};    // turn LEDs off
+    io_seg_time = 2x{{8h00}};    // turn segs off
+    io_sel_score = 2x{{4h0}};    // turn sels off
+    
+    run.startbutton = io_start_button[0];
+    run.abutton = io_button[0];
+    run.bbutton = io_button[1];
+    
+    //io_seg_score[0] = ~run.segscorea;
+    //io_sel_score[0] = run.selscorea;
+    
+    io_led[0] = run.leda;
+    io_led[1] = run.ledb;
+
+  }
+}

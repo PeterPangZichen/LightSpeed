@@ -1,0 +1,133 @@
+module memory (
+    input clk,  // clock
+    input rst,  // reset
+    input ra[3],
+    input rb[3],
+    input we,
+    input wa[3],
+    input wd[8],
+    output a[8],
+    output b[8],
+    output alednum[8],  //a leds in one-hot
+    output blednum[8],  //b leds in one-hot
+    output ascoresnum[8],  //a scores in binary
+    output bscoresnum[8],  //b scores in binary
+    output debug[8]
+      ) {
+
+  .clk(clk), .rst(rst){
+    dff aled[8];
+    dff bled[8];
+    dff ascores[8];
+    dff bscores[8];
+    dff temp[8];
+    dff constant_1[8];
+  }
+    
+  always {
+    
+    alednum = aled.q;
+    blednum = bled.q;
+    ascoresnum = ascores.q;
+    bscoresnum = bscores.q;
+    
+    debug = temp.q;
+    
+    constant_1.d = 1;
+    
+    //write data
+    if(we==8b00000001){
+    
+      case(wa){
+      
+        b000:
+        
+          aled.d = wd;
+          
+        b001:
+        
+          bled.d = wd;
+          
+        b010:
+        
+          ascores.d = wd;
+          
+        b011:
+        
+          bscores.d = wd;    
+          
+        b100:
+        
+          temp.d = wd;
+        
+      }    
+    }
+    
+    
+    //read a
+    case(ra){
+    
+      b000:
+      
+        a = aled.q;
+        
+      b001:
+      
+        a = bled.q;
+        
+      b010:
+      
+        a = ascores.q;
+        
+      b011:
+      
+        a = bscores.q;
+        
+      b100:
+        
+        a = temp.q;
+        
+      b101:
+      
+        a = constant_1.q;
+          
+      default:
+      
+        a = 0;
+        
+    }
+       
+    //read b 
+    case(rb){
+    
+      b000:
+      
+        b = aled.q;
+        
+      b001:
+      
+        b = bled.q;
+        
+      b010:
+      
+        b = ascores.q;
+        
+      b011:
+      
+        b = bscores.q;
+            
+      b100:
+        
+        b = temp.q;
+            
+      b101:
+          
+        b = constant_1.q;
+            
+      default:
+      
+        b = 0;
+        
+    }
+  }
+}

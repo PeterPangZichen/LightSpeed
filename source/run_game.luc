@@ -1,0 +1,101 @@
+module run_game (
+    input clk,  // clock
+    input rst,  // reset
+    input startbutton,
+    input abutton[8],
+    input bbutton[8],
+    output leda[8],  //led output a
+    output ledb[8],  //led output a
+    output segscorea[8],  //seg output
+    output selscorea[4],
+    output segscoreb[8],  //seg output
+    output selscoreb[4],
+    output segtime[2][8]
+  ) {
+  
+  alu alu16;
+  
+  .clk(clk) {
+  
+    button_conditioner aconditionor[8];
+    button_conditioner bconditionor[8];
+    button_conditioner startconditionor;
+    edge_detector adetector[8] (#RISE(1), #FALL(0));
+    edge_detector bdetector[8] (#RISE(1), #FALL(0));
+    edge_detector startdetector (#RISE(1), #FALL(0));
+     
+  }
+  
+  .clk(clk), .rst(rst) {
+    
+    control_logic control;
+    memory memory;
+    
+    multi_seven_seg displaya;
+    multi_seven_seg displayb;
+    
+  }
+  
+  seven_seg displaytime1;
+  seven_seg displaytime2;
+  
+  bin_to_dec dtime (#DIGITS(2));
+  bin_to_dec dascores (#DIGITS(4));
+  bin_to_dec dbscores (#DIGITS(4));
+
+  
+  always {
+    
+    //initialize control module
+    control.abutton = adetector.out;
+    control.bbutton = bdetector.out;
+    control.startbutton = startdetector.out;
+    control.rd = alu16.out;
+    
+    //initialize memory module
+    memory.ra = control.ra;
+    memory.rb = control.rb;
+    memory.we = control.we;
+    memory.wa = control.wa;
+    memory.wd = control.wd;
+    
+    //initialize alu module
+    alu16.a = memory.a;
+    alu16.b = memory.b;
+    alu16.alufn = control.alufn;
+    
+    //detect the rising edge of buttons
+    aconditionor.in = abutton;
+    adetector.in = aconditionor.out;
+    bconditionor.in = bbutton;
+    bdetector.in = bconditionor.out;
+    startconditionor.in = startbutton;
+    startdetector.in = startconditionor.out;
+    
+    //transfer values in base2 to base10
+    dtime.value = control.tm;
+    //dascores.value = memory.ascoresnum;
+    dascores.value = control.tm-1;
+    dbscores.value = memory.bscoresnum;
+    
+    
+    //input values in base10, decode them for display
+    displaya.values = dascores.digits;
+    displayb.values = dbscores.digits;
+    displaytime1.char = dtime.digits[0];
+    displaytime2.char = dtime.digits[1];
+    
+    //connect leds to memory
+    leda = memory.alednum;
+    ledb = memory.blednum;
+    
+    //connect value to 7-segment
+    segtime[0] = displaytime1.segs;
+    segtime[1] = displaytime2.segs;
+    segscorea = displaya.seg;
+    segscoreb = displayb.seg;
+    selscorea = displaya.sel;
+    selscoreb = displayb.sel;
+    
+  }
+}
